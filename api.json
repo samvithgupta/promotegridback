@@ -1,0 +1,128 @@
+{
+    "Vendors": [
+        {
+            "name": "Create Vendor",
+            "method": "POST",
+            "url": "/api/vendors",
+            "body": {
+                "name": "John Doe",
+                "firm_name": "Spaces Inc",
+                "phone_number": "1234567890",
+                "email": "john@example.com",
+                "gst_number": "07ABCDE1234F1Z5",
+                "address": "123 Business Street, City, Country",
+                "space_ids": []
+            }
+        },
+        {
+            "name": "Get All Vendors",
+            "method": "GET",
+            "url": "/api/vendors"
+        },
+        {
+            "name": "Get Vendor by ID",
+            "method": "GET",
+            "url": "/api/vendors/{vendorId}"
+        },
+        {
+            "name": "Update Vendor",
+            "method": "PUT",
+            "url": "/api/vendors/{vendorId}",
+            "body": {
+                "name": "John Updated",
+                "phone_number": "9876543210",
+                "email": "john.updated@example.com"
+            }
+        },
+        {
+            "name": "Delete Vendor",
+            "method": "DELETE", 
+            "url": "/api/vendors/{vendorId}"
+        },
+        {
+            "name": "Add Space to Vendor",
+            "method": "POST",
+            "url": "/api/vendors/{vendorId}/spaces",
+            "body": {
+                "space_id": "PR1234567890"
+            }
+        },
+        {
+            "name": "Remove Space from Vendor",
+            "method": "DELETE",
+            "url": "/api/vendors/{vendorId}/spaces/{spaceId}"
+        }
+    ],
+    "Spaces": [
+        {
+            "name": "Create Space",
+            "method": "POST", 
+            "url": "/api/spaces",
+            "body": {
+                "type": "Coworking",
+                "media": ["url1", "url2"],
+                "price": 500.00,
+                "description": "Modern coworking space",
+                "pincode": "560001",
+                "google_maps_url": "https://goo.gl/maps/example",
+                "availability": {}
+            }
+        },
+        {
+            "name": "Get All Spaces",
+            "method": "GET",
+            "url": "/api/spaces"
+        },
+        {
+            "name": "Get Space by ID",
+            "method": "GET", 
+            "url": "/api/spaces/{spaceId}"
+        },
+        {
+            "name": "Update Space",
+            "method": "PUT",
+            "url": "/api/spaces/{spaceId}",
+            "body": {
+                "price": 600.00,
+                "description": "Updated space description"
+            }
+        },
+        {
+            "name": "Delete Space",
+            "method": "DELETE",
+            "url": "/api/spaces/{spaceId}"
+        },
+        {
+            "name": "Check Space Availability",
+            "method": "GET",
+            "url": "/api/spaces/{spaceId}/availability?start_date=2024-01-01&end_date=2024-01-31"
+        },
+        {
+            "name": "Add Availability Slots",
+            "method": "POST",
+            "url": "/api/spaces/{spaceId}/availability",
+            "body": {
+                "dates": ["2024-02-01", "2024-02-02"]
+            }
+        },
+        {
+            "name": "Remove Availability Slots",
+            "method": "DELETE",
+            "url": "/api/spaces/{spaceId}/availability",
+            "body": {
+                "dates": ["2024-02-01", "2024-02-02"]
+            }
+        },
+        {
+            "name": "Update Availability Slots",
+            "method": "PATCH",
+            "url": "/api/spaces/{spaceId}/availability",
+            "body": {
+                "updates": {
+                    "2024-02-01": false,
+                    "2024-02-02": true
+                }
+            }
+        }
+    ]
+}

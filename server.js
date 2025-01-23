@@ -36,12 +36,27 @@ CREATE TABLE IF NOT EXISTS spaces (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
+const vendorSchema = `
+CREATE TABLE IF NOT EXISTS vendors (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  vendor_id VARCHAR(20) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  firm_name VARCHAR(255),
+  phone_number VARCHAR(20) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  gst_number VARCHAR(20),
+  address TEXT,
+  space_ids JSON,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`;
 
 // Initialize database schema
 async function initDB() {
   try {
     await pool.query(schema);
-    console.log('Database schema initialized');
+    await pool.query(vendorSchema);
+    console.log('Database schemas initialized');
   } catch (error) {
     console.error('Error initializing database:', error);
   }
@@ -318,9 +333,192 @@ app.post('/api/spaces/:spaceId/availability', async (req, res) => {
       res.status(500).json({ error: 'Error updating availability slots' });
     }
   });
+// Generate vendor ID using timestamp
+function generateVendorId() {
+  const timestamp = Date.now();
+  return `VN${timestamp}`;
+}
 
+// Create a new vendor
+app.post('/api/vendors', async (req, res) => {
+  try {
+    const {
+      name,
+      firm_name,
+      phone_number,
+      email,
+      gst_number,
+      address,
+      space_ids = []
+    } = req.body;
+
+    const vendorId = generateVendorId();
+
+    const [result] = await pool.query(
+      'INSERT INTO vendors (vendor_id, name, firm_name, phone_number, email, gst_number, address, space_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        vendorId,
+        name,
+        firm_name || null,
+        phone_number,
+        email,
+        gst_number || null,
+        address,
+        JSON.stringify(space_ids)
+      ]
+    );
+
+    res.status(201).json({ 
+      id: result.insertId,
+      vendor_id: vendorId, 
+      message: 'Vendor created successfully' 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error creating vendor' });
+  }
+});
+
+// Get all vendors
+app.get('/api/vendors', async (req, res) => {
+  try {
+    const [vendors] = await pool.query('SELECT * FROM vendors');
+    res.json(vendors);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error fetching vendors' });
+  }
+});
+
+// Get vendor by vendor_id
+app.get('/api/vendors/:vendorId', async (req, res) => {
+  try {
+    const [vendors] = await pool.query('SELECT * FROM vendors WHERE vendor_id = ?', [req.params.vendorId]);
+    if (vendors.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    res.json(vendors[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error fetching vendor' });
+  }
+});
+
+// Update vendor
+app.put('/api/vendors/:vendorId', async (req, res) => {
+  try {
+    const {
+      name,
+      firm_name,
+      phone_number,
+      email,
+      gst_number,
+      address,
+      space_ids
+    } = req.body;
+
+    const [result] = await pool.query(
+      'UPDATE vendors SET name = ?, firm_name = ?, phone_number = ?, email = ?, gst_number = ?, address = ?, space_ids = ? WHERE vendor_id = ?',
+      [
+        name,
+        firm_name || null,
+        phone_number,
+        email,
+        gst_number || null,
+        address,
+        JSON.stringify(space_ids || []),
+        req.params.vendorId
+      ]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    res.json({ message: 'Vendor updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error updating vendor' });
+  }
+});
+
+// Delete vendor
+app.delete('/api/vendors/:vendorId', async (req, res) => {
+  try {
+    const [result] = await pool.query('DELETE FROM vendors WHERE vendor_id = ?', [req.params.vendorId]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    
+    res.json({ message: 'Vendor deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error deleting vendor' });
+  }
+});
+
+// Add space to vendor's space_ids
+app.post('/api/vendors/:vendorId/spaces', async (req, res) => {
+  try {
+    const { space_id } = req.body;
+
+    const [vendor] = await pool.query('SELECT space_ids FROM vendors WHERE vendor_id = ?', [req.params.vendorId]);
+    
+    if (vendor.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    const currentSpaces = JSON.parse(vendor[0].space_ids || '[]');
+    
+    if (!currentSpaces.includes(space_id)) {
+      currentSpaces.push(space_id);
+    }
+
+    await pool.query(
+      'UPDATE vendors SET space_ids = ? WHERE vendor_id = ?',
+      [JSON.stringify(currentSpaces), req.params.vendorId]
+    );
+
+    res.json({ 
+      message: 'Space added to vendor successfully',
+      space_ids: currentSpaces
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error adding space to vendor' });
+  }
+});
+
+// Remove space from vendor's space_ids
+app.delete('/api/vendors/:vendorId/spaces/:spaceId', async (req, res) => {
+  try {
+    const [vendor] = await pool.query('SELECT space_ids FROM vendors WHERE vendor_id = ?', [req.params.vendorId]);
+    
+    if (vendor.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    const currentSpaces = JSON.parse(vendor[0].space_ids || '[]');
+    const updatedSpaces = currentSpaces.filter(id => id !== req.params.spaceId);
+
+    await pool.query(
+      'UPDATE vendors SET space_ids = ? WHERE vendor_id = ?',
+      [JSON.stringify(updatedSpaces), req.params.vendorId]
+    );
+
+    res.json({ 
+      message: 'Space removed from vendor successfully',
+      space_ids: updatedSpaces
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error removing space from vendor' });
+  }
+});
   
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
